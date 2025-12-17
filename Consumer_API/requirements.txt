@@ -13,7 +13,7 @@ bentoml==1.3.13
 imbalanced-learn==0.12.4
 
 # Utilities
-requests==2.32.3
+requests==2.32.4
 python-dotenv==1.0.1
 
 # Dataset loading
