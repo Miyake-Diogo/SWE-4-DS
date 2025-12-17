@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  mlflow:
+    build:
+      context: .
+      dockerfile: Dockerfile.mlflow
+    container_name: mlflow-server
+    ports:
+      - "5055:5000"
+    volumes:
+      - ./mlruns:/app/mlruns
+    networks:
+      - ml-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  bentoml:
+    image: credit_default_classifier:latest
+    container_name: bentoml-server
+    ports:
+      - "3033:3000"
+    volumes:
+      - ./mlruns:/app/mlruns
+    networks:
+      - ml-network
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  ml-network:
+    driver: bridge
+
+volumes:
+  mlruns:
