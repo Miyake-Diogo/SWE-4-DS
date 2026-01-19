@@ -419,7 +419,7 @@ Este projeto é um exemplo educacional para o as aulas de Engenharia de Software
 
 ## Autor
 
-Desenvolvido por Diogo Miyake como material didático para POSTECH FIAP - Machine Learning Engineering.
+Desenvolvido por Diogo Miyake Com auxilio de IA para material didático para POSTECH FIAP - Machine Learning Engineering.
 
 ---
 

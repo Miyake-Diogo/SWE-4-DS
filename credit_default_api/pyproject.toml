@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}
 authors = [
-    {name = "POSTECH FIAP", email = "ml-team@example.com"}
+    {name = "Diogo Miyake"}
 ]
 keywords = ["machine-learning", "mlflow", "bentoml", "credit-risk", "decision-tree"]
 classifiers = [
