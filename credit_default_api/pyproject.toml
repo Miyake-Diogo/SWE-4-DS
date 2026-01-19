@@ -26,7 +26,7 @@ dependencies = [
     "mlflow==2.18.0",
     
     # BentoML for model serving
-    "bentoml==1.3.13",
+    "bentoml==1.4.19",
     
     # Data processing
     "imbalanced-learn==0.12.4",
