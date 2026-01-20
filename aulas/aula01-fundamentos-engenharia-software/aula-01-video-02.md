@@ -69,6 +69,7 @@ uv --version
 cd c:\Users\diogomiyake\projects\SWE-4-DS\swe4ds-api-project
 
 # Criar ambiente virtual com UV (muito mais rápido que venv tradicional)
+uv init 
 uv venv
 
 # Ativar ambiente virtual
@@ -79,6 +80,14 @@ uv venv
 source .venv/bin/activate
 
 # Criar estrutura de pastas para exemplos desta aula
+
+# Windows (criar cada pasta separadamente):
+mkdir modularidade
+mkdir coesao
+mkdir acoplamento
+# PowerShell:
+mkdir modularidade, coesao, acoplamento
+# Linux/Mac
 mkdir exemplos
 cd exemplos
 mkdir modularidade coesao acoplamento
@@ -240,7 +249,7 @@ class DataCleaner:
 ```
 
 ```python
-# exemplos/modularidade/feature_engineer.py
+# exemplos/modularidade/feature_engineering.py
 """Módulo responsável por feature engineering."""
 import pandas as pd
 
