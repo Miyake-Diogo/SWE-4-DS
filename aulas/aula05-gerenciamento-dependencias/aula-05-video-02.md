@@ -92,104 +92,66 @@ swe4ds-credit-api/
 
 ## Passo 1: Limitações do requirements.txt (Excalidraw: Slide 3)
 
-**Intenção**: Entender por que requirements.txt não é suficiente.
+**Intenção**: Consolidar a teoria de versionamento e reprodutibilidade.
 
-### Formato Tradicional
+### O que o requirements.txt NÃO resolve
 
-```txt
-# requirements.txt típico
-pandas
-numpy
-scikit-learn
+Mesmo com versões fixadas, ele não descreve **o grafo de dependências** completo:
+
+```
 fastapi
+└── starlette
+    └── anyio
+    └── idna
 ```
 
-**Problemas:**
-1. **Sem versões**: Instala a mais recente (muda com o tempo)
-2. **Sem dependências transitivas**: pandas depende de numpy, mas você não sabe qual versão
-3. **Sem separação dev/prod**: Testes misturados com produção
-4. **Sem hash/verificação**: Não garante integridade
+Sem um lockfile, cada instalação pode resolver versões diferentes dessas dependências transitivas.
 
-### Tentativas de Melhoria
+### Limitações conceituais
 
-```txt
-# requirements.txt com versões exatas
-pandas==2.0.3
-numpy==1.24.3
-scikit-learn==1.3.0
-fastapi==0.103.1
-```
+1. **Sem contexto de ambiente**: não diferencia dev, test e prod
+2. **Sem histórico de resolução**: não guarda o “conjunto exato” que funcionou
+3. **Sem política de atualização**: não define como evoluir versões com segurança
 
-**Ainda tem problemas:**
-- Como você sabe quais versões funcionam juntas?
-- Se precisar atualizar pandas, qual numpy é compatível?
-- Não documenta dependências de desenvolvimento
-
-### A Solução: Ferramentas Modernas
+### O papel do pyproject + lockfile
 
 ```
-requirements.txt → pyproject.toml (declaração)
-                 → lockfile (versões exatas resolvidas)
+pyproject.toml (intenção: ranges)
+    ↓
+uv.lock (realidade: versões exatas)
+    ↓
+.venv   (ambiente reproduzível)
 ```
 
-**CHECKPOINT**: Você entende as limitações do requirements.txt.
+**CHECKPOINT**: Você entende por que o requirements.txt é insuficiente para reprodutibilidade real.
 
 ---
 
 ## Passo 2: Versionamento Semântico (SemVer) (Excalidraw: Slide 4)
 
-**Intenção**: Entender o significado das versões.
+**Intenção**: Entender a teoria por trás de ranges seguros.
 
-### Formato: MAJOR.MINOR.PATCH
+### O que o SemVer garante (e o que NÃO garante)
 
 ```
-pandas==2.1.3
-        │ │ └── PATCH: bug fixes (compatível)
-        │ └──── MINOR: novas features (compatível)
-        └────── MAJOR: breaking changes (incompatível)
+MAJOR.MINOR.PATCH
 ```
 
-### Exemplos Práticos
+- **PATCH**: correções compatíveis
+- **MINOR**: novas features compatíveis
+- **MAJOR**: mudanças incompatíveis
 
-| Versão | Significado |
-|--------|-------------|
-| `1.0.0` → `1.0.1` | Bug fix, seguro atualizar |
-| `1.0.0` → `1.1.0` | Nova feature, seguro atualizar |
-| `1.0.0` → `2.0.0` | Breaking change, CUIDADO! |
+Mas atenção: nem todo projeto segue SemVer corretamente. Por isso, ranges são **política de risco**, não garantia absoluta.
 
-### Especificadores de Versão
+### Estratégia de risco controlado
 
-```python
-# Versão exata (evite quando possível)
-pandas==2.0.3
-
-# Versão mínima
-pandas>=2.0.0
-
-# Range de versões (recomendado)
-pandas>=2.0.0,<3.0.0
-
-# Compatível com (equivalente ao range acima)
-pandas~=2.0.0
-
-# Qualquer versão 2.x (caret, comum em JS)
-pandas^2.0.0
-```
-
-### Estratégia Recomendada
-
-Para dependências de produção:
 ```
 pacote>=MAJOR.MINOR,<MAJOR+1
 ```
 
-Exemplo:
-```
-pandas>=2.0,<3.0      # Aceita 2.0.0, 2.1.0, 2.9.9, mas não 3.0.0
-fastapi>=0.100,<1.0   # Aceita 0.100.0, 0.103.1, mas não 1.0.0
-```
+Isso permite correções e features sem quebrar a API principal. O lockfile registra a versão específica que foi testada.
 
-**CHECKPOINT**: Você entende MAJOR.MINOR.PATCH e especificadores de versão.
+**CHECKPOINT**: Você consegue justificar por que usamos ranges + lockfile.
 
 ---
 

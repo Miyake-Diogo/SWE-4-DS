@@ -82,7 +82,22 @@ swe4ds-credit-api/
 
 **Intenção:** Registrar eventos críticos de predição.
 
-Arquivo: `src/main.py` (trecho a adicionar)
+Arquivo: `src/main.py` (trecho a adicionar — diff lógico)
+
+```python
+# (ADICIONAR no topo do arquivo, junto aos imports)
+import logging
+```
+
+```python
+# (ADICIONAR após criação do app)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+)
+
+logger = logging.getLogger("credit-api")
+```
 
 ```python
 import logging
@@ -95,7 +110,7 @@ logging.basicConfig(
 logger = logging.getLogger("credit-api")
 ```
 
-Arquivo: `src/routes/predict.py` (trecho a adicionar)
+Arquivo: `src/routes/predict.py` (trecho a adicionar — diff lógico)
 
 ```python
 from src.main import logger
@@ -116,7 +131,12 @@ def predict_endpoint(payload: PredictRequest):
 
 **Intenção:** Expor métricas básicas para observabilidade.
 
-Arquivo: `src/routes/metrics.py` (novo)
+Arquivo: `src/routes/metrics.py` (novo — criar arquivo)
+
+```bash
+New-Item src/routes/metrics.py -ItemType File
+code src/routes/metrics.py
+```
 
 ```python
 from fastapi import APIRouter
@@ -125,16 +145,23 @@ router = APIRouter()
 
 _request_count = 0
 
+
+def increment_request_count() -> None:
+    global _request_count
+    _request_count += 1
+
+
 @router.get("/metrics")
 def metrics():
     return {"request_count": _request_count}
+
 
 @router.get("/health")
 def health():
     return {"status": "ok"}
 ```
 
-Arquivo: `src/main.py` (trecho a adicionar)
+Arquivo: `src/main.py` (trecho a adicionar — diff lógico)
 
 ```python
 from src.routes.metrics import router as metrics_router
@@ -150,7 +177,7 @@ app.include_router(metrics_router)
 
 **Intenção:** Armazenar entradas para comparação futura.
 
-Arquivo: `src/services/model_service.py` (trecho a adicionar)
+Arquivo: `src/services/model_service.py` (trecho a adicionar — diff lógico)
 
 ```python
 import json
@@ -165,14 +192,16 @@ def log_input_sample(payload: dict) -> None:
         f.write(json.dumps(payload) + "\n")
 ```
 
-Arquivo: `src/routes/predict.py` (trecho a adicionar)
+Arquivo: `src/routes/predict.py` (trecho a adicionar — diff lógico)
 
 ```python
+from src.routes.metrics import increment_request_count
 from src.services.model_service import log_input_sample
 
 @router.post("/predict")
 def predict_endpoint(payload: PredictRequest):
     payload_dict = payload.model_dump()
+    increment_request_count()
     log_input_sample(payload_dict)
     result = predict_one(MODEL, payload_dict)
     return {"prediction": result}
@@ -197,6 +226,40 @@ print("accuracy:", acc)
 ```
 
 **CHECKPOINT:** Métrica calculada quando houver dados rotulados.
+
+---
+
+## Passo 5: Teste automatizado de métricas
+
+**Intenção:** Garantir que o endpoint `/metrics` responde corretamente.
+
+Arquivo: `tests/test_metrics.py` (novo)
+
+```bash
+New-Item tests/test_metrics.py -ItemType File
+code tests/test_metrics.py
+```
+
+```python
+"""Testes básicos para o endpoint de métricas."""
+
+from fastapi.testclient import TestClient
+
+from src.main import app
+
+
+def test_metrics_endpoint_returns_counter():
+    client = TestClient(app)
+    response = client.get("/metrics")
+    assert response.status_code == 200
+    assert "request_count" in response.json()
+```
+
+```bash
+uv run pytest tests/test_metrics.py -v
+```
+
+**CHECKPOINT:** Teste de métricas passa localmente.
 
 # 7. Testes rápidos e validação
 

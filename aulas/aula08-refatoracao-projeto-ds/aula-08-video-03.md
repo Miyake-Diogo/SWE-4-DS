@@ -78,6 +78,12 @@ swe4ds-credit-api/
 
 **Intenção:** Ver o problema antes da refatoração.
 
+Abra o arquivo e confirme o trecho (ou cole se necessário):
+
+```bash
+code src/routes/predict.py
+```
+
 Trecho em `src/routes/predict.py` (antes):
 
 ```python
@@ -103,7 +109,12 @@ def predict_endpoint(payload: PredictRequest):
 
 **Intenção:** Mover validação para função reutilizável.
 
-Criar `src/services/preprocessing.py` (diff lógico):
+Crie o arquivo e adicione a função (diff lógico):
+
+```bash
+New-Item src/services/preprocessing.py -ItemType File
+code src/services/preprocessing.py
+```
 
 ```diff
 + def validate_payload(data: dict) -> str | None:
@@ -133,7 +144,7 @@ Atualizar `predict.py`:
 
 **Intenção:** Evitar duplicação de lógica de features.
 
-Adicionar em `preprocessing.py`:
+Adicionar em `preprocessing.py` (diff lógico):
 
 ```diff
 + def build_features(data: dict) -> dict:
@@ -172,7 +183,46 @@ Diff lógico:
 
 ---
 
-## Passo 5: Comparação final (Excalidraw: Slide 5)
+## Passo 5: Testes unitários para o novo módulo
+
+**Intenção:** Garantir que validação e features funcionam isoladamente.
+
+Crie `tests/test_preprocessing.py`:
+
+```bash
+New-Item tests/test_preprocessing.py -ItemType File
+code tests/test_preprocessing.py
+```
+
+```python
+from src.services.preprocessing import build_features, validate_payload
+
+
+def test_validate_payload_ok():
+    data = {"age": 30, "limit": 1000}
+    assert validate_payload(data) is None
+
+
+def test_validate_payload_error():
+    data = {"age": 15, "limit": 1000}
+    assert validate_payload(data) == "underage"
+
+
+def test_build_features_adds_score():
+    data = {"age": 30, "limit": 1000}
+    features = build_features(data)
+    assert features["score"] == 10.0
+```
+
+```bash
+uv run pytest tests/test_preprocessing.py -q
+```
+
+**CHECKPOINT:** Testes do módulo passam.
+
+---
+
+## Passo 6: Comparação final (Excalidraw: Slide 5)
 
 **Intenção:** Visualizar ganhos de qualidade.
 

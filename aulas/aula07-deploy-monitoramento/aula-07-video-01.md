@@ -84,109 +84,75 @@ swe4ds-credit-api/
 
 # 6. Passo a passo (comandos + código)
 
-## Passo 1: Criar estrutura de workflow (Excalidraw: Slide 1)
+## Passo 1: O que compõe um pipeline de CI (Excalidraw: Slide 1)
 
-**Intenção:** Criar a pasta padrão do GitHub Actions.
+**Intenção:** Entender os blocos fundamentais do CI antes de escrever qualquer YAML.
 
-```bash
-mkdir .github
-mkdir .github\workflows
+### Componentes mínimos de um CI saudável
+
+1. **Checkout do código**
+2. **Setup do runtime** (Python 3.12)
+3. **Instalação de dependências** (uv + `uv.lock`)
+4. **Quality gates** (lint + testes)
+
+```
+Checkout → Setup → Install → Lint → Tests
 ```
 
-**CHECKPOINT:** Se deu certo, você verá a pasta .github/workflows na raiz.
+**CHECKPOINT:** Você consegue explicar por que cada etapa existe.
 
 ---
 
-## Passo 2: Adicionar workflow de CI
+## Passo 2: Estrutura mental do workflow
 
-**Intenção:** Configurar o pipeline para rodar lint e testes a cada push.
-
-Arquivo: `.github/workflows/ci.yml` (novo)
+**Intenção:** Entender a anatomia de um workflow do GitHub Actions.
 
 ```yaml
 name: ci
-
-on:
-  push:
-    branches: ["main"]
-  pull_request:
-
+on: [push, pull_request]
 jobs:
   quality:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install uv
-        run: pip install uv
-
-      - name: Install dependencies
-        run: uv sync
-
-      - name: Lint
-        run: uv run ruff check src/ tests/
-
-      - name: Tests
-        run: uv run pytest -q
+      - checkout
+      - setup python
+      - install deps
+      - lint
+      - tests
 ```
 
-**CHECKPOINT:** Ao fazer push, o GitHub Actions deve mostrar a execução do job `quality`.
+Esse YAML é um **mapa mental**. A implementação prática (arquivo real) será feita na Parte 04.
+
+**CHECKPOINT:** Você sabe reconhecer as seções `on`, `jobs` e `steps`.
 
 ---
 
-## Passo 3: Integrar Infra-as-Code no pipeline
+## Passo 3: Quality Gates (teoria aplicada)
 
-**Intenção:** Garantir que arquivos de infraestrutura também sejam validados.
+**Intenção:** Definir o que bloqueia merges automaticamente.
 
-Exemplo de validação de Dockerfile (sem build completo):
+Quality gates típicos:
+- **Lint** (estilo e erros rápidos)
+- **Testes** (contrato de comportamento)
+- **Verificações mínimas de infra** (ex.: presença de Dockerfile)
 
-```yaml
-      - name: Validate Dockerfile
-        run: |
-          if [ -f Dockerfile ]; then
-            echo "Dockerfile encontrado";
-          else
-            echo "Dockerfile não encontrado";
-            exit 1;
-          fi
-```
-
-**CHECKPOINT:** Se o Dockerfile estiver presente, o pipeline passa.
+**CHECKPOINT:** Você sabe quais gates são obrigatórios no nosso projeto.
 
 ---
 
-## Passo 4: Documentar o CI no README
+## Passo 4: Documentação do CI
 
-**Intenção:** Deixar explícito para o time que o projeto tem CI.
+**Intenção:** Tornar o pipeline visível para o time.
 
-Arquivo: `README.md` (trecho a adicionar)
+Na prática, adicionamos um pequeno bloco no README para que novos membros saibam que CI existe e o que ele valida. A alteração real fica para a Parte 04.
 
-```md
-## Qualidade e CI
-
-Este projeto executa lint e testes automaticamente a cada push usando GitHub Actions.
-```
-
-**CHECKPOINT:** README atualizado localmente.
+**CHECKPOINT:** Você entende por que CI precisa estar documentado.
 
 # 7. Testes rápidos e validação
 
-```bash
-# Rodar localmente antes do push
-uv run ruff check src/ tests/
-uv run pytest -q
-```
+Nesta parte, a validação é **conceitual**: você deve saber que lint e testes são o “contrato” que protege o merge. A execução prática completa será feita na Parte 04.
 
-**Exemplo de resposta esperada (sem valores fixos):**
-```json
-{"status": "ok"}
-```
+**CHECKPOINT:** Você consegue explicar por que rodar lint + testes antes do push evita regressões.
 
 # 8. Observabilidade e boas práticas (mini-bloco)
 

@@ -90,7 +90,77 @@ swe4ds-credit-api/
 
 ### O Código Antes
 
-Criar `src/analyzer.py` com código "ruim" proposital:
+Crie o arquivo e cole o conteúdo abaixo (diff lógico):
+
+```bash
+New-Item src/analyzer.py -ItemType File
+code src/analyzer.py
+```
+
+```python
+# (SUBSTITUIR conteúdo do arquivo)
+"""Analisador de crédito - ANTES da refatoração."""
+
+def analyze(d, t=0.5):
+    # valida
+    if d is None:
+        return {"error": "no data"}
+    if "age" not in d:
+        return {"error": "no age"}
+    if "limit" not in d:
+        return {"error": "no limit"}
+    if "history" not in d:
+        return {"error": "no history"}
+    
+    # valida valores
+    if d["age"] < 18 or d["age"] > 120:
+        return {"error": "invalid age"}
+    if d["limit"] <= 0:
+        return {"error": "invalid limit"}
+    
+    # calcula score
+    s = 0
+    
+    # idade
+    if d["age"] >= 18 and d["age"] < 25:
+        s = s + 10
+    elif d["age"] >= 25 and d["age"] < 35:
+        s = s + 20
+    elif d["age"] >= 35 and d["age"] < 50:
+        s = s + 30
+    elif d["age"] >= 50:
+        s = s + 25
+    
+    # limite
+    if d["limit"] < 1000:
+        s = s + 5
+    elif d["limit"] < 5000:
+        s = s + 15
+    elif d["limit"] < 10000:
+        s = s + 25
+    else:
+        s = s + 35
+    
+    # historico
+    h = d["history"]
+    if h == "good":
+        s = s + 40
+    elif h == "regular":
+        s = s + 20
+    elif h == "bad":
+        s = s + 5
+    
+    # normaliza
+    s = s / 100
+    
+    # decide
+    if s >= t:
+        r = "approved"
+    else:
+        r = "rejected"
+    
+    return {"status": r, "score": s}
+```
 
 ```python
 """Analisador de crédito - ANTES da refatoração."""
@@ -171,7 +241,58 @@ def analyze(d, t=0.5):
 
 Antes de refatorar, garantir comportamento:
 
+Crie o arquivo e cole o conteúdo (mão na massa):
+
+```bash
+New-Item tests/test_analyzer.py -ItemType File
+code tests/test_analyzer.py
+```
+
 ```python
+"""Testes para analyzer - garantem comportamento durante refatoração."""
+
+import pytest
+from src.analyzer import analyze
+
+
+class TestAnalyze:
+    """Testes de caracterização para analyze."""
+
+    def test_valid_young_low_limit_good_history(self):
+        data = {"age": 20, "limit": 500, "history": "good"}
+        result = analyze(data)
+        
+        assert result["status"] == "approved"
+        assert result["score"] == pytest.approx(0.55)
+
+    def test_valid_middle_age_high_limit_bad_history(self):
+        data = {"age": 40, "limit": 15000, "history": "bad"}
+        result = analyze(data)
+        
+        assert result["status"] == "rejected"
+        assert result["score"] == pytest.approx(0.70)  # 30 + 35 + 5
+
+    def test_missing_age(self):
+        result = analyze({"limit": 1000, "history": "good"})
+        assert result == {"error": "no age"}
+
+    def test_invalid_age(self):
+        result = analyze({"age": 15, "limit": 1000, "history": "good"})
+        assert result == {"error": "invalid age"}
+
+    def test_none_data(self):
+        result = analyze(None)
+        assert result == {"error": "no data"}
+
+    def test_custom_threshold(self):
+        data = {"age": 20, "limit": 500, "history": "good"}
+        
+        result_low = analyze(data, t=0.3)
+        result_high = analyze(data, t=0.9)
+        
+        assert result_low["status"] == "approved"
+        assert result_high["status"] == "rejected"
+```
 """Testes para analyzer - garantem comportamento durante refatoração."""
 
 import pytest

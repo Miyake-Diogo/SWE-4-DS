@@ -181,7 +181,51 @@ __all__ = ["funcao_principal", "__version__"]
 
 **Intenção**: Configurar exports do pacote.
 
-Atualize `src/__init__.py`:
+Abra o arquivo e aplique o **diff lógico** abaixo:
+
+```bash
+# Abrir o arquivo
+code src/__init__.py
+```
+
+```python
+# (SUBSTITUIR conteúdo do arquivo)
+# src/__init__.py
+"""
+SWE4DS Credit API - Módulo de análise de crédito.
+
+Este pacote fornece ferramentas para validação e análise
+de dados de crédito, desenvolvido como parte do curso
+Engenharia de Machine Learning.
+
+Uso básico:
+    from src import validate_limit_bal, validate_age
+    
+    is_valid = validate_limit_bal(50000)
+"""
+
+__version__ = "0.1.0"
+__author__ = "SWE4DS Team"
+
+# Imports públicos
+from .validation import (
+    validate_age,
+    validate_education,
+    validate_input,
+    validate_limit_bal,
+)
+
+__all__ = [
+    "__version__",
+    "__author__",
+    "validate_limit_bal",
+    "validate_age",
+    "validate_education",
+    "validate_input",
+]
+```
+
+Depois de salvar, rode o teste de import:
 
 ```python
 # src/__init__.py
@@ -239,7 +283,71 @@ v0.1.0: True
 
 **Intenção**: Adicionar metadados necessários para empacotamento.
 
-Atualize `pyproject.toml` com metadados completos:
+Abra o `pyproject.toml` e **substitua a seção `[project]`** para ficar como abaixo (mão na massa):
+
+```bash
+# Abrir o arquivo
+code pyproject.toml
+```
+
+```toml
+# (SUBSTITUIR a seção [project] inteira e adicionar seções indicadas)
+[project]
+name = "swe4ds-credit-api"
+version = "0.1.0"
+description = "API de análise de crédito para o curso SWE4DS"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.12"
+
+authors = [
+    {name = "SWE4DS Team", email = "team@example.com"}
+]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+keywords = ["credit", "machine-learning", "api", "fastapi"]
+
+dependencies = [
+    "pandas>=2.0,<3.0",
+    "numpy>=1.24,<2.0",
+    "scikit-learn>=1.3,<2.0",
+    "pydantic>=2.0,<3.0",
+    "fastapi>=0.100,<1.0",
+    "uvicorn>=0.24,<1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0,<9.0",
+    "pytest-cov>=4.0,<6.0",
+    "ruff>=0.1,<1.0",
+    "taskipy>=1.12,<2.0",
+]
+
+[project.scripts]
+# swe4ds-credit = "src.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/swe4ds/credit-api"
+Documentation = "https://github.com/swe4ds/credit-api#readme"
+Repository = "https://github.com/swe4ds/credit-api"
+Issues = "https://github.com/swe4ds/credit-api/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+```
 
 ```toml
 [project]

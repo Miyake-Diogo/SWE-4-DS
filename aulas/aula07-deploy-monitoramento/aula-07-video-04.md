@@ -83,7 +83,14 @@ swe4ds-credit-api/
 
 **Intenção:** Executar testes, build e push da imagem.
 
-Arquivo: `.github/workflows/cicd.yml` (novo)
+Arquivo: `.github/workflows/cicd.yml` (novo — criar arquivo)
+
+```bash
+mkdir .github
+mkdir .github\workflows
+New-Item .github/workflows/cicd.yml -ItemType File
+code .github/workflows/cicd.yml
+```
 
 ```yaml
 name: cicd
@@ -134,7 +141,12 @@ jobs:
 
 **Intenção:** Simular deploy da imagem para staging.
 
-Arquivo: `scripts/deploy_staging.ps1` (novo)
+Arquivo: `scripts/deploy_staging.ps1` (novo — criar arquivo)
+
+```bash
+New-Item scripts/deploy_staging.ps1 -ItemType File
+code scripts/deploy_staging.ps1
+```
 
 ```powershell
 param(
@@ -169,6 +181,22 @@ Exemplo de etapa no workflow:
 ```
 
 **CHECKPOINT:** Workflow registra a verificação de saúde.
+
+---
+
+## Passo 4: Simular Blue-Green local (opcional)
+
+**Intenção:** Tornar visível a estratégia na prática.
+
+```bash
+# Versão blue
+uv run uvicorn src.main:app --port 8000
+
+# Versão green
+uv run uvicorn src.main:app --port 8001
+```
+
+**CHECKPOINT:** As duas portas respondem a `/health`.
 
 # 7. Testes rápidos e validação
 

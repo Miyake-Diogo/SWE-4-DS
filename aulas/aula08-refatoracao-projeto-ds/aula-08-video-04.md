@@ -123,6 +123,12 @@ Diff lógico de movimentação:
 + models/model.pkl                  # mover artefatos de modelo
 ```
 
+Movimentação prática (exemplo):
+
+```bash
+Move-Item Consumer_API\model.pkl models\model.pkl
+```
+
 **CHECKPOINT:** Notebooks em `notebooks/`, modelos em `models/`.
 
 ---
@@ -136,6 +142,12 @@ Exemplo de ajuste em `src/services/model_service.py`:
 ```diff
 - MODEL_PATH = "Consumer_API/model.pkl"
 + MODEL_PATH = "models/model.pkl"
+```
+
+Abra e edite o arquivo:
+
+```bash
+code src/services/model_service.py
 ```
 
 **CHECKPOINT:** API continua carregando o modelo corretamente.
@@ -168,6 +180,19 @@ Benefícios:
 - Integração com pipelines (Airflow/Prefect) mais simples
 
 **CHECKPOINT:** Estrutura pronta para produção e escalabilidade.
+
+---
+
+## Passo 7: Validar tudo na prática
+
+**Intenção:** Garantir que a reorganização não quebrou a API.
+
+```bash
+uv run pytest -q
+uv run uvicorn src.main:app --reload
+```
+
+**CHECKPOINT:** `/health` responde e testes passam.
 
 # 7. Testes rápidos e validação
 

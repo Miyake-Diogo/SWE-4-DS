@@ -77,130 +77,67 @@ swe4ds-credit-api/
 
 # 6. Passo a passo (comandos + código)
 
-## Passo 1: Comparar batch vs tempo real (Excalidraw: Slide 2)
+## Passo 1: Batch vs. Tempo Real (Excalidraw: Slide 2)
 
-**Intenção:** Entender quando cada modo é mais adequado.
+**Intenção:** Fixar os critérios de decisão.
 
-### Exemplo de script batch
+### Matriz de decisão
 
-Arquivo: `scripts/batch_predict.py` (novo)
+| Critério | Batch | Tempo real |
+|---|---|---|
+| Latência | Alta tolerável | Baixa exigida |
+| Custo por request | Baixo | Mais alto |
+| Volume | Muito alto | Moderado |
+| Operação | Simples | Mais complexa |
 
-```python
-"""Executa predições em lote a partir de um CSV."""
-
-import pandas as pd
-from src.services.model_service import load_model, predict
-
-MODEL = load_model()
-
-
-def run_batch(input_path: str, output_path: str) -> None:
-    df = pd.read_csv(input_path)
-    preds = predict(MODEL, df)
-    df["prediction"] = preds
-    df.to_csv(output_path, index=False)
-
-
-if __name__ == "__main__":
-    run_batch("data/input.csv", "data/output.csv")
-```
-
-**CHECKPOINT:** Ao rodar o script, você deve ver o arquivo `data/output.csv` criado.
-
-```bash
-uv run python scripts/batch_predict.py
-```
+**CHECKPOINT:** Você consegue justificar a escolha com base em latência e custo.
 
 ---
 
-## Passo 2: API em tempo real
+## Passo 2: Estratégias de rollout (Blue-Green e Canary)
 
-**Intenção:** Reforçar quando latência baixa é necessária.
+**Intenção:** Entender o objetivo de cada estratégia.
 
-Arquivo: `src/routes/predict.py` (trecho existente)
+### Blue-Green
+- Duas versões completas em paralelo
+- Troca de tráfego instantânea
+- Rollback rápido
 
-```python
-from fastapi import APIRouter
-from pydantic import BaseModel
-from src.services.model_service import load_model, predict_one
+### Canary
+- Exposição gradual do tráfego
+- Detecta problemas cedo
+- Requer métricas/monitoramento
 
-router = APIRouter()
-MODEL = load_model()
-
-class PredictRequest(BaseModel):
-    age: int
-    limit: float
-    history: str
-
-@router.post("/predict")
-def predict_endpoint(payload: PredictRequest):
-    result = predict_one(MODEL, payload.model_dump())
-    return {"prediction": result}
-```
-
-**CHECKPOINT:** Requisição POST em `/predict` retorna JSON com predição.
+**CHECKPOINT:** Você consegue explicar a diferença entre “troca total” e “troca gradual”.
 
 ---
 
-## Passo 3: Estratégia Blue-Green (Excalidraw: Slide 2)
+## Passo 3: Riscos e trade-offs
 
-**Intenção:** Simular duas versões rodando lado a lado.
+**Intenção:** Mapear impactos antes de decidir.
 
-### Simulação com portas diferentes
+| Estratégia | Vantagem | Risco/Trade-off |
+|---|---|---|
+| Blue-Green | Rollback simples | Custo duplicado temporário |
+| Canary | Menor risco | Observabilidade obrigatória |
 
-```bash
-# Versão blue
-uv run uvicorn src.main:app --port 8000
-
-# Versão green (nova)
-uv run uvicorn src.main:app --port 8001
-```
-
-Troque o tráfego manualmente apontando o cliente para a porta 8001.
-
-**CHECKPOINT:** Ambas versões respondem em portas diferentes.
+**CHECKPOINT:** Você consegue apontar quando Canary é inviável.
 
 ---
 
-## Passo 4: Estratégia Canary
+## Passo 4: Onde isso entra na nossa API
 
-**Intenção:** Direcionar só parte do tráfego para a versão nova.
+**Intenção:** Conectar a teoria ao projeto.
 
-Simulação simples em cliente:
+Na prática, vamos simular versões da API e rotas de tráfego na Parte 04, junto com o pipeline. Aqui, o foco é a **decisão de estratégia**.
 
-```python
-import random
-import requests
-
-url_blue = "http://localhost:8000/predict"
-url_green = "http://localhost:8001/predict"
-
-payload = {"age": 30, "limit": 2000, "history": "good"}
-
-# 10% do tráfego vai para green
-if random.random() < 0.1:
-    r = requests.post(url_green, json=payload)
-else:
-    r = requests.post(url_blue, json=payload)
-
-print(r.json())
-```
-
-**CHECKPOINT:** A maior parte das requisições vai para blue, algumas para green.
+**CHECKPOINT:** Você entende o “porquê” antes do “como”.
 
 # 7. Testes rápidos e validação
 
-```bash
-# Testar endpoint
-curl -X POST http://localhost:8000/predict \
-  -H "Content-Type: application/json" \
-  -d "{\"age\": 30, \"limit\": 2000, \"history\": \"good\"}"
-```
+Nesta parte, a validação é **conceitual**: você deve saber que batch e real-time precisam de testes diferentes (processamento em lote vs. contract test de endpoint).
 
-Resposta esperada (exemplo):
-```json
-{"prediction": "approved"}
-```
+**CHECKPOINT:** Você sabe qual tipo de teste valida cada estratégia.
 
 # 8. Observabilidade e boas práticas (mini-bloco)
 

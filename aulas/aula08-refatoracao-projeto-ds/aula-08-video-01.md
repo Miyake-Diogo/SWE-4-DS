@@ -75,101 +75,64 @@ swe4ds-credit-api/
 
 # 6. Passo a passo (comandos + código)
 
-## Passo 1: Mapear duplicações (Excalidraw: Slide 1)
+## Passo 1: Tipos de bad smells mais comuns (Excalidraw: Slide 1)
 
-**Intenção:** Encontrar lógica repetida nos scripts/notebooks.
+**Intenção:** Reconhecer padrões antes de mexer em código.
 
-Comando de busca simples:
+Categorias principais:
+- **Duplicação** (mesma lógica em múltiplos pontos)
+- **Funções monolíticas** (muitas responsabilidades)
+- **Dependências implícitas** (estado global / ordem de execução)
+- **Nomes obscuros** (`df2`, `temp`, `x`)
 
-```bash
-# Procurar por blocos duplicados
-Get-ChildItem -Recurse -Filter "*.py" | Select-String "predict" -Context 2,2
-```
-
-**CHECKPOINT:** Se deu certo, você verá ocorrências repetidas de lógica similar.
-
----
-
-## Passo 2: Identificar funções monolíticas
-
-**Intenção:** Detectar funções que fazem “tudo” ao mesmo tempo.
-
-Critérios simples:
-- Funções com mais de 30–40 linhas
-- Funções que fazem leitura, validação e predição juntas
-
-Exemplo típico:
-
-```python
-# SMELL: Função faz tudo
-def process_and_predict(input_path: str) -> dict:
-    df = pd.read_csv(input_path)
-    # limpeza
-    # feature engineering
-    # predição
-    # salvar saída
-    return result
-```
-
-**CHECKPOINT:** Liste 1 ou mais funções longas no seu projeto.
+**CHECKPOINT:** Você consegue citar 3 smells sem abrir o projeto.
 
 ---
 
-## Passo 3: Variáveis globais e dependências implícitas
+## Passo 2: Critérios objetivos para diagnóstico
 
-**Intenção:** Ver onde o código depende de ordem de execução.
+**Intenção:** Ter regras simples para identificar smells.
 
-Exemplo de smell comum:
+Critérios práticos (teóricos):
+- Função > 30–40 linhas
+- Mesmo bloco repetido 2+ vezes
+- Módulo mistura leitura, validação e predição
+- Variáveis globais controlam fluxo
 
-```python
-# SMELL: Dependência implícita
-MODEL = None
-
-if MODEL is None:
-    MODEL = load_model()
-
-def predict(data):
-    return MODEL.predict(data)
-```
-
-Problema: a função depende de um estado global oculto.
-
-**CHECKPOINT:** Identifique pelo menos 1 variável global crítica.
+**CHECKPOINT:** Você consegue aplicar esses critérios mentalmente ao projeto.
 
 ---
 
-## Passo 4: Impacto prático nos projetos de DS
+## Passo 3: Impacto dos smells na API FastAPI
 
-**Intenção:** Conectar smells com problemas reais.
+**Intenção:** Conectar sinais com riscos reais.
 
-Impactos:
-- Dificuldade de colaboração (ninguém entende o fluxo)
-- Bugs difíceis de rastrear
-- Reuso quase impossível
-- Deploy arriscado
+Impactos típicos:
+- **Bugs difíceis de rastrear**
+- **Evolução lenta** (cada mudança quebra outra)
+- **Onboarding pesado**
+- **Deploy arriscado**
 
-**CHECKPOINT:** Liste 2 impactos que você já viu na prática.
+**CHECKPOINT:** Você consegue explicar por que smells aumentam risco de deploy.
+
+---
+
+## Passo 4: Priorização de refatoração
+
+**Intenção:** Saber por onde começar.
+
+Ordem sugerida:
+1. Duplicações críticas
+2. Funções monolíticas em rotas
+3. Dependências implícitas de modelo
+
+**CHECKPOINT:** Você consegue listar 3 pontos de prioridade antes de refatorar.
 
 # 7. Testes rápidos e validação
 
-Teste simples para validar comportamento antes da refatoração:
+Nesta parte, a validação é **conceitual**: você precisa garantir que há uma linha de base de testes antes de refatorar, mas a execução prática acontece na Parte 03.
 
-```bash
-uv run pytest -q
-```
-
-Exemplo de resposta:
-```json
-{"status": "ok"}
-```
-
-Teste automatizado (exemplo em `tests/test_health.py`):
-
-```python
-def test_health(client):
-    resp = client.get("/health")
-    assert resp.status_code == 200
-```
+**CHECKPOINT:** Você entende que refatoração sem testes é risco alto.
 
 # 8. Observabilidade e boas práticas (mini-bloco)
 

@@ -75,149 +75,102 @@ cd c:\Users\diogomiyake\projects\swe4ds-credit-api
 
 ```
 swe4ds-credit-api/
-├── .git/
-├── .github/
-│   └── workflows/
-│       └── ci.yml
-├── .gitignore
-├── .dockerignore
-├── Dockerfile
-├── docker-compose.yml
-├── .env.example
-├── pyproject.toml              # Existe mas vamos melhorar
-├── requirements.txt            # Existe mas vamos substituir
-├── data/
-├── models/
-├── scripts/
-│   ├── download_data.py
-│   ├── process_sample.py
-│   └── test_volume.py
-├── src/
-│   ├── __init__.py
-│   ├── data_loader.py
-│   └── validation.py
-└── tests/
-    ├── __init__.py
-    └── test_validation.py
-```
-
-**O que vamos fazer nesta aula:**
-- Entender conceitos de isolamento
-- Instalar UV
-- Preparar terreno para migrar o projeto
-
 # 6. Passo a passo (comandos + código)
 
 ## Passo 1: Entendendo o Problema - Instalação Global (Excalidraw: Slide 1)
 
-**Intenção**: Visualizar por que a instalação global causa problemas.
+**Intenção**: Fixar a teoria por trás do “dependency hell”.
 
-### Como Python gerencia pacotes por padrão
+### Como o Python resolve imports (visão conceitual)
 
-```bash
-# Verificar onde pip instala pacotes
-python -c "import site; print(site.getsitepackages())"
+Quando você roda `import pandas`, o Python procura módulos nesta ordem:
+1. Diretório atual do projeto
+2. Diretórios do `PYTHONPATH`
+3. `site-packages` do Python ativo
 
-# Listar pacotes instalados globalmente
-pip list
+Se você instala tudo no Python global, **todo projeto compartilha o mesmo `site-packages`**.
 
-# Verificar localização de um pacote específico
-pip show pandas
+```
+Python global
+└── Lib/site-packages
+   ├── pandas (uma única versão)
+   ├── numpy (uma única versão)
+   └── ...
 ```
 
-**Saída típica do `pip show pandas`:**
-```
-Name: pandas
-Version: 2.0.3
-Location: C:\Users\diogomiyake\AppData\Local\Programs\Python\Python312\Lib\site-packages
-...
-```
-
-### O Problema: Todos os projetos compartilham
+### O Problema: versão única, muitos projetos
 
 ```
 C:\Users\diogomiyake\
-├── projeto-A/          → usa pandas 1.5.3
-├── projeto-B/          → usa pandas 2.0.3
+├── projeto-A/          → precisa pandas 1.5.x
+├── projeto-B/          → precisa pandas 2.x
 └── Python312/
-    └── site-packages/
-        └── pandas/     → SÓ PODE TER UMA VERSÃO!
+   └── site-packages/  → só pode haver UMA versão instalada
 ```
 
-Se projeto-A precisa de pandas 1.5.3 e projeto-B precisa de pandas 2.0.3, você tem um problema. Instalar um quebra o outro.
-
-**CHECKPOINT**: Você entende que a instalação global compartilha pacotes entre todos os projetos.
+**CHECKPOINT**: Você entende que o conflito acontece porque todos os projetos “enxergam” o mesmo `site-packages`.
 
 ---
 
 ## Passo 2: Conceito de Ambiente Virtual (Excalidraw: Slide 1)
 
-**Intenção**: Entender como ambientes virtuais resolvem o problema.
+**Intenção**: Consolidar a teoria do isolamento.
 
-### A Solução: Isolamento
+### O que é um ambiente virtual de verdade?
 
-Ambiente virtual é uma **cópia isolada** do interpretador Python com seu próprio diretório de pacotes.
+Um ambiente virtual cria um **Python isolado** com:
+- seus próprios `site-packages`
+- seu próprio executável `python`
+- seu próprio `pip`
 
 ```
 C:\Users\diogomiyake\
 ├── projeto-A/
 │   └── .venv/                  # Ambiente isolado
-│       └── Lib/site-packages/
-│           └── pandas/         # pandas 1.5.3
+│       └── Lib/site-packages/  # dependências do projeto A
 │
 ├── projeto-B/
-│   └── .venv/                  # Outro ambiente isolado
-│       └── Lib/site-packages/
-│           └── pandas/         # pandas 2.0.3
+│   └── .venv/                  # Ambiente isolado
+│       └── Lib/site-packages/  # dependências do projeto B
 │
 └── Python312/                  # Python global (limpo)
 ```
 
-**Benefícios:**
+**Benefícios teóricos principais:**
 | Aspecto | Global | Ambiente Virtual |
 |---------|--------|-----------------|
 | Isolamento | Nenhum | Total por projeto |
-| Conflitos | Frequentes | Impossíveis |
-| Reprodutibilidade | Difícil | Fácil |
-| Limpeza | Arriscada | Deleta a pasta |
-| Colaboração | "Funciona no meu PC" | Mesmo ambiente |
+| Conflitos | Frequentes | Improváveis |
+| Reprodutibilidade | Difícil | Controlável |
+| Limpeza | Arriscada | Remove só a pasta |
 
-**CHECKPOINT**: Você entende que ambientes virtuais isolam pacotes por projeto.
+**CHECKPOINT**: Você consegue explicar por que isolamento resolve conflitos.
 
 ---
 
 ## Passo 3: Ferramentas Tradicionais vs. UV (Excalidraw: Slide 2)
 
-**Intenção**: Comparar opções e justificar a escolha do UV.
+**Intenção**: Entender, no nível conceitual, o papel de cada ferramenta.
 
-### Ferramentas Tradicionais
+### Onde cada ferramenta atua no ciclo de vida
 
-**venv** (built-in desde Python 3.3):
-```bash
-# Criar ambiente
-python -m venv .venv
+| Etapa | Ferramenta tradicional | UV |
+|------|-------------------------|----|
+| Criar ambiente | venv/virtualenv | `uv venv` |
+| Instalar pacotes | pip | `uv add` / `uv pip` |
+| Resolver versões | pip-tools | `uv lock` |
+| Reproduzir ambiente | manual | `uv sync` |
 
-# Ativar (Windows PowerShell)
-.\.venv\Scripts\Activate.ps1
+### Por que UV vira padrão?
 
-# Ativar (Linux/Mac)
-source .venv/bin/activate
-
-# Instalar pacotes
-pip install pandas
-
-# Desativar
-deactivate
+O UV unifica tudo em um fluxo:
+```
+declarar (pyproject) → resolver (lock) → sincronizar (sync)
 ```
 
-**virtualenv** (pacote externo, mais recursos):
-```bash
-pip install virtualenv
-virtualenv .venv
-```
+Isso reduz **erros humanos**, aumenta **reprodutibilidade** e dá **velocidade** ao ciclo de desenvolvimento.
 
-**Conda** (popular em Data Science):
-```bash
+**CHECKPOINT**: Você entende o papel do UV no fluxo de dependências.
 conda create -n meuenv python=3.12
 conda activate meuenv
 conda install pandas

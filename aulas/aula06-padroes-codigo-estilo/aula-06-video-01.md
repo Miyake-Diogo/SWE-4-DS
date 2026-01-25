@@ -441,90 +441,45 @@ quote-style = "double"
 indent-style = "space"
 ```
 
-### Testando a Configuração
+### O que essa configuração significa (visão teórica)
 
-```bash
-# Ver configuração ativa
-ruff check --show-settings src/
+Em termos de **governança de estilo**, essa configuração decide:
 
-# Verificar com nova configuração
-ruff check src/ tests/
+- **O que é considerado erro** (ex.: `N` para naming, `I` para imports)
+- **O que o time aceita ignorar** (ex.: `E501` porque o formatador decide)
+- **Como o projeto “parece” visualmente** (aspas, indentação, line length)
 
-# Formatar código
-ruff format src/ tests/
-```
+O mais importante nesta parte é **entender** que o estilo fica **documentado no repositório**, e não na cabeça de cada dev.
 
-**CHECKPOINT**: Configuração do Ruff atualizada com regras de naming.
+**CHECKPOINT**: Você entende que o `pyproject.toml` é o contrato de estilo do time.
 
 ---
 
-## Passo 7: Aplicando no Projeto de Crédito
+## Passo 7: PEP 8 como Contrato de Time
 
-**Intenção**: Garantir que nosso código segue PEP 8.
+**Intenção**: Fixar a teoria de por que estilo é governança, não estética.
 
-```bash
-# Verificar estado atual
-ruff check src/ tests/
+### O que muda quando o time adota PEP 8
 
-# Corrigir automaticamente o que for possível
-ruff check src/ tests/ --fix
+- **Code review** foca em lógica, não em formatação
+- **Onboarding** fica mais rápido (código previsível)
+- **Menos bugs** passam escondidos por “ruído visual”
 
-# Formatar
-ruff format src/ tests/
+### Onde o estilo vive
 
-# Verificar novamente
-ruff check src/ tests/
-```
+- **No repositório** (`pyproject.toml`)
+- **No CI** (lint automático)
+- **No editor** (formatação automática)
 
-Se houver erros que não podem ser corrigidos automaticamente, corrija manualmente:
+Nesta parte o foco é entender o **porquê**. A execução prática completa (rodar Ruff, corrigir erros, fazer commit) será feita na Parte 03.
 
-```bash
-# Ver detalhes de cada erro
-ruff check src/ --output-format=full
-```
-
-### Commit das Melhorias
-
-```bash
-# Adicionar mudanças
-git add src/ tests/ pyproject.toml
-
-# Commit
-git commit -m "style: aplica PEP 8 e atualiza configuração Ruff
-
-- Adiciona regras pep8-naming (N)
-- Corrige ordenação de imports
-- Formata código com line-length=88
-- Configura isort sections"
-
-# Push
-git push origin main
-```
-
-**CHECKPOINT**: Código do projeto passa em `ruff check` sem erros.
+**CHECKPOINT**: Você consegue explicar por que estilo é uma decisão de time.
 
 # 7. Testes rápidos e validação
 
-```bash
-# Verificar que não há erros de estilo
-ruff check src/ tests/
+Nesta parte, a validação é **conceitual**: você já sabe quais comandos usar para garantir estilo e testes. A execução prática completa entra na Parte 03.
 
-# Verificar que formatação está correta
-ruff format src/ tests/ --check
-
-# Rodar testes (garantir que mudanças não quebraram nada)
-task test
-
-# Verificação completa
-task check
-```
-
-**Saída esperada:**
-```
-All checks passed!
-12 files already formatted
-... passed ...
-```
+**CHECKPOINT**: Você sabe que a validação envolve lint, format e testes antes de commit.
 
 # 8. Observabilidade e boas práticas (mini-bloco)
 

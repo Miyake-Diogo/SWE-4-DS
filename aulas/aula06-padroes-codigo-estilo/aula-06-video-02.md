@@ -487,84 +487,34 @@ def analyze_client(data: dict) -> dict:
 
 ---
 
-## Passo 6: Aplicando no Projeto de Crédito
+## Passo 6: Diagnóstico Teórico no Projeto de Crédito
 
-**Intenção**: Analisar e melhorar código existente.
+**Intenção**: Saber **o que procurar** antes de refatorar.
 
-Vamos verificar o código atual:
+Nesta parte, o foco é **mapear smells e princípios violados** sem ainda modificar o código. Você deve conseguir responder:
 
-```bash
-# Ver código de validação
-cat src/validation.py
-```
+- Onde há **duplicação**? (DRY)
+- Onde há **complexidade desnecessária**? (KISS)
+- Que funções **fazem mais de uma coisa**? (SRP)
+- Onde há **nomes obscuros** e **magic numbers**?
 
-### Análise de Code Smells
+### Checklist de diagnóstico
 
-Verifique se há:
 - [ ] Funções muito longas (> 20 linhas)
-- [ ] Código duplicado
+- [ ] Código duplicado em mais de um arquivo
 - [ ] Nomes pouco descritivos
-- [ ] Magic numbers
+- [ ] Magic numbers sem constantes
 - [ ] Responsabilidades misturadas
 
-### Exemplo de Melhoria
+**Nota:** A execução prática (alterar arquivos, rodar testes, commitar) será feita nas Partes 03 e 04.
 
-Se `validation.py` tem magic numbers:
-
-```python
-# ANTES
-def validate_age(age: int) -> bool:
-    return 18 <= age <= 120
-
-# DEPOIS
-MIN_AGE = 18
-MAX_AGE = 120
-
-def validate_age(age: int) -> bool:
-    """Valida se idade está no range permitido."""
-    return MIN_AGE <= age <= MAX_AGE
-```
-
-### Commit das Melhorias
-
-```bash
-# Verificar que testes passam antes
-task test
-
-# Fazer melhorias
-# ... editar arquivos ...
-
-# Verificar que testes ainda passam
-task test
-
-# Commit
-git add src/
-git commit -m "refactor: aplica princípios de código limpo
-
-- Extrai constantes para magic numbers
-- Melhora nomes de variáveis
-- Adiciona docstrings descritivas"
-```
-
-**CHECKPOINT**: Código melhorado mantendo testes passando.
+**CHECKPOINT**: Você consegue apontar 3–5 melhorias sem abrir um editor.
 
 # 7. Testes rápidos e validação
 
-```bash
-# Verificar lint
-ruff check src/ tests/
+Nesta parte, a validação é **conceitual**: você deve saber que toda refatoração precisa de testes e lint antes de ir para o Git.
 
-# Verificar formatação
-ruff format src/ tests/ --check
-
-# Rodar testes
-task test
-
-# Verificação completa
-task check
-```
-
-**Todos devem passar após refatoração.**
+**CHECKPOINT**: Você consegue explicar por que testes são o “cinto de segurança” da refatoração.
 
 # 8. Observabilidade e boas práticas (mini-bloco)
 

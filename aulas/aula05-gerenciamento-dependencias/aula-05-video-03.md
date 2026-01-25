@@ -138,7 +138,27 @@ ruff        0.9.2
 
 **Intenção**: Criar aliases para comandos frequentes.
 
-Adicione ao `pyproject.toml`:
+Abra o arquivo e aplique o **diff lógico** abaixo (copie exatamente o bloco):
+
+```bash
+# Abrir o arquivo
+code pyproject.toml
+```
+
+```toml
+# (ADICIONAR ao final do arquivo)
+[tool.taskipy.tasks]
+test = "pytest tests/ -v"
+test-cov = "pytest tests/ -v --cov=src --cov-report=html --cov-report=term"
+lint = "ruff check src/ tests/"
+lint-fix = "ruff check src/ tests/ --fix"
+format = "ruff format src/ tests/"
+format-check = "ruff format src/ tests/ --check"
+check = "task lint && task format-check && task test"
+clean = "rm -rf .pytest_cache .coverage htmlcov __pycache__ .ruff_cache"
+```
+
+Se preferir, **substitua/adicione** a seção manualmente. O objetivo é que o arquivo fique com esta seção presente:
 
 ```toml
 # =============================================================================
@@ -198,7 +218,7 @@ clean       rm -rf .pytest_cache .coverage htmlcov __pycache__ .ruff_cache
 
 **Intenção**: Definir configurações padrão para pytest.
 
-Adicione ao `pyproject.toml`:
+Abra o `pyproject.toml` e **cole o bloco completo** abaixo (mão na massa):
 
 ```toml
 # =============================================================================
@@ -282,7 +302,7 @@ tests/test_validation.py::test_validate_limit_bal_invalid PASSED
 
 **Intenção**: Configurar linter e formatador unificados.
 
-Adicione ao `pyproject.toml`:
+No mesmo arquivo, **adicione a seção do Ruff** (copie e cole):
 
 ```toml
 # =============================================================================

@@ -160,6 +160,29 @@ mkdir src/models
 New-Item src/models/__init__.py -ItemType File
 ```
 
+Abra o `src/models/__init__.py` e adicione um export mínimo (diff lógico):
+
+```python
+# (ADICIONAR no arquivo)
+"""Pacote de estratégias de modelos."""
+
+from .strategies import (
+    DummyStrategy,
+    LogisticRegressionStrategy,
+    ModelFactory,
+    ModelStrategy,
+    RandomForestStrategy,
+)
+
+__all__ = [
+    "ModelStrategy",
+    "RandomForestStrategy",
+    "LogisticRegressionStrategy",
+    "DummyStrategy",
+    "ModelFactory",
+]
+```
+
 ### Criar arquivo de estratégias
 
 Criar `src/models/strategies.py`:
@@ -296,6 +319,38 @@ probas = model.predict_proba(X_test)
 
 **CHECKPOINT**: Strategy Pattern implementado para modelos.
 
+### Teste rápido (mão na massa)
+
+Crie `tests/test_strategies.py` com testes simples de inicialização:
+
+```python
+"""Testes básicos das estratégias de modelo."""
+
+from src.models.strategies import DummyStrategy, LogisticRegressionStrategy, RandomForestStrategy
+
+
+def test_random_forest_strategy_name():
+    model = RandomForestStrategy(n_estimators=10)
+    assert model.name == "RandomForest"
+
+
+def test_logistic_strategy_name():
+    model = LogisticRegressionStrategy(max_iter=100)
+    assert model.name == "LogisticRegression"
+
+
+def test_dummy_strategy_name():
+    model = DummyStrategy(strategy="most_frequent")
+    assert model.name == "Dummy"
+```
+
+```bash
+# Rodar somente os testes novos
+uv run pytest tests/test_strategies.py -v
+```
+
+**CHECKPOINT**: Testes de estratégias passam.
+
 ---
 
 ## Passo 3: Factory Pattern para Criar Estratégias (Excalidraw: Slide 7)
@@ -308,7 +363,7 @@ Encapsula a lógica de criação de objetos. Útil quando a criação é complex
 
 ### Implementação
 
-Adicionar ao `src/models/strategies.py`:
+Adicionar ao `src/models/strategies.py` (diff lógico — cole ao final do arquivo):
 
 ```python
 class ModelFactory:

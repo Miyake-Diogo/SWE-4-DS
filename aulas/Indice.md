@@ -1,6 +1,9 @@
 
 # Índice — SWE4DS (Vídeos)
 
+Apresentação
+Material complementar, Discord para duvidas e 
+
 ## Aula 01
 - [Vídeo 01 — Engenharia de Software e Ciclo de Vida em Ciência de Dados](aula01-fundamentos-engenharia-software/aula-01-video-01.md)
 - [Vídeo 02 — Princípios de Design de Código: Modularidade, Coesão e Boas Práticas](aula01-fundamentos-engenharia-software/aula-01-video-02.md)

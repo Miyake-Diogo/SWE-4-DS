@@ -74,112 +74,49 @@ swe4ds-credit-api/
 
 # 6. Passo a passo (comandos + código)
 
-## Passo 1: Extract Function (Excalidraw: Slide 2)
+## Passo 1: Catálogo de técnicas (Excalidraw: Slide 2)
 
-**Intenção:** Transformar um bloco repetido em função reutilizável.
+**Intenção:** Entender quando usar cada técnica.
 
-Exemplo de trecho antes:
+| Técnica | Quando usar | Resultado esperado |
+|---|---|---|
+| Extract Function | Blocos repetidos | Reuso e testes fáceis |
+| Rename | Nomes genéricos | Código autoexplicativo |
+| Move/Rearrange | Mistura de camadas | Separação clara |
 
-```python
-# ANTES
-if payload["age"] < 18:
-    return {"error": "underage"}
-if payload["limit"] <= 0:
-    return {"error": "invalid_limit"}
-```
-
-Refatoração (diff lógico):
-
-```diff
-+ def validate_payload(payload: dict) -> str | None:
-+     if payload["age"] < 18:
-+         return "underage"
-+     if payload["limit"] <= 0:
-+         return "invalid_limit"
-+     return None
-+
-- if payload["age"] < 18:
--     return {"error": "underage"}
-- if payload["limit"] <= 0:
--     return {"error": "invalid_limit"}
-+ if error := validate_payload(payload):
-+     return {"error": error}
-```
-
-**CHECKPOINT:** Código repetido vira função única, sem alterar comportamento.
+**CHECKPOINT:** Você sabe escolher a técnica correta para cada smell.
 
 ---
 
-## Passo 2: Rename (Excalidraw: Slide 2)
+## Passo 2: Estratégia de risco controlado
 
-**Intenção:** Substituir nomes genéricos por nomes de domínio.
+**Intenção:** Refatorar sem quebrar a API.
 
-Exemplo:
+Regras de ouro:
+1. **Teste antes**
+2. **Passos pequenos**
+3. **Commit por mudança**
 
-```diff
-- def pred(x):
--     return model.predict(x)
-+ def predict_credit_risk(features):
-+     return model.predict(features)
-```
-
-**CHECKPOINT:** Funções e variáveis ficam autoexplicativas.
+**CHECKPOINT:** Você consegue explicar o porquê dessa ordem.
 
 ---
 
-## Passo 3: Move/Rearrange Code (Excalidraw: Slide 2)
+## Passo 3: Critérios de sucesso
 
-**Intenção:** Organizar funções por responsabilidade.
+**Intenção:** Saber se a refatoração foi bem‑sucedida.
 
-Exemplo de movimento de função (diff lógico):
+Critérios:
+- Mesma resposta para o mesmo input
+- Testes verdes
+- Menos duplicação e menor acoplamento
 
-```diff
-# src/routes/predict.py
-- def load_model():
--     ...
-+ from src.services.model_service import load_model
-```
-
-```diff
-# src/services/model_service.py
-+ def load_model():
-+     ...
-```
-
-**CHECKPOINT:** `routes/` foca apenas em HTTP, `services/` em lógica de domínio.
-
----
-
-## Passo 4: Planejamento incremental
-
-**Intenção:** Evitar grandes reescritas.
-
-Checklist antes de refatorar:
-- Testes passando
-- Mudanças pequenas
-- Commit por refatoração
-
-**CHECKPOINT:** Cada etapa termina com testes verdes.
+**CHECKPOINT:** Você sabe provar que não mudou o comportamento.
 
 # 7. Testes rápidos e validação
 
-```bash
-# Rodar testes após cada etapa
-uv run pytest -q
+Nesta parte, a validação é **conceitual**. A execução prática (com comandos e testes reais) entra na Parte 03.
 
-# Rodar lint
-uv run ruff check src/ tests/
-```
-
-Teste automatizado mínimo (exemplo):
-
-```python
-def test_predict_endpoint(client):
-    payload = {"age": 30, "limit": 2000, "history": "good"}
-    resp = client.post("/predict", json=payload)
-    assert resp.status_code == 200
-    assert "prediction" in resp.json()
-```
+**CHECKPOINT:** Você entende que cada refatoração precisa de testes antes e depois.
 
 # 8. Observabilidade e boas práticas (mini-bloco)
 
