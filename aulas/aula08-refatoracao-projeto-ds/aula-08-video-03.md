@@ -14,25 +14,23 @@ tags: ["hands-on", "refatoracao", "fastapi", "tests", "clean-code"]
 
 Olá! Espero que vocês estejam bem. Nessa aula vamos fazer uma refatoração **na prática**.
 
-Vamos pegar um código de Data Science com problemas típicos: duplicação, funções longas e mistura de responsabilidades. E vamos transformá-lo em um código organizado, testável e pronto para produção, sem alterar o comportamento.
-
-Tudo isso integrado à nossa API FastAPI, que continua consumindo o modelo da pasta Consumer_API.
+Vamos pegar o código real da nossa API de crédito e identificar problemas típicos: lógica de negócio complexa dentro do serviço, cálculo de score com múltiplas regras não testadas isoladamente, e falta de separação entre feature engineering e predição. Vamos transformá-lo em um código organizado, testável e pronto para produção.
 
 # 2. Problema → Agitação → Solução (Storytelling curto)
 
-**Problema**: O endpoint de predição funciona, mas a lógica de validação e pré-processamento está duplicada em vários lugares.
+**Problema**: A função `predict_one` em `model_service.py` tem 40+ linhas misturando cálculo de score, regras de negócio e decisão final.
 
-**Agitação**: Uma pequena mudança no pré-processamento quebra um endpoint, mas não o outro. O time perde confiança na API.
+**Agitação**: Quando surge uma nova regra de negócio (ex: limite de empréstimo baseado em idade), precisamos mexer em uma função gigante. Testar cada regra isoladamente é impossível.
 
-**Solução**: Refatorar passo a passo, extraindo funções reutilizáveis e reorganizando o código em módulos claros. A API continua estável, mas o design melhora drasticamente.
+**Solução**: Refatorar extraindo funções menores: `calculate_credit_score`, `apply_age_rules`, `apply_income_rules`. Cada uma testável, reutilizável e com responsabilidade única.
 
 # 3. Objetivos de aprendizagem
 
 Ao final você será capaz de:
 
-1. **Refatorar** um trecho real de código de DS
-2. **Extrair** funções reutilizáveis
-3. **Reorganizar** módulos mantendo testes verdes
+1. **Refatorar** lógica de negócio complexa em funções menores
+2. **Extrair** cálculos de features para módulo separado
+3. **Criar** testes unitários para cada função extraída
 4. **Comparar** estrutura original e refatorada
 
 # 4. Pré-requisitos e Setup do Ambiente
@@ -44,15 +42,15 @@ Ao final você será capaz de:
 
 **Setup:**
 
-```bash
+```powershell
 .\.venv\Scripts\Activate.ps1
 uv run pytest -q
 ```
 
 **Checklist de setup:**
 - [ ] Ambiente virtual ativo
-- [ ] Testes passando
-- [ ] Git limpo
+- [ ] Testes passando (todos os 8 testes)
+- [ ] Git limpo (commit antes de refatorar)
 
 # 5. Visão geral do que já existe no projeto (continuidade)
 
@@ -60,240 +58,509 @@ Estado atual:
 ```
 swe4ds-credit-api/
 ├── src/
-│   ├── routes/predict.py
-│   ├── services/model_service.py
-│   └── services/preprocessing.py   # será criado
+│   ├── main.py
+│   ├── routes/
+│   │   ├── predict.py      # Endpoint limpo
+│   │   └── metrics.py
+│   └── services/
+│       └── model_service.py # 🔥 Precisa refatorar
 ├── tests/
-└── Consumer_API/
+│   ├── test_predict.py     # Testes de integração
+│   └── test_health.py
+└── logs/
 ```
 
 **O que será alterado nesta parte:**
-- Refatorar `predict.py`
-- Criar `services/preprocessing.py`
-- Ajustar testes
+- Refatorar `services/model_service.py`
+- Criar `services/scoring.py` (novo)
+- Criar `services/business_rules.py` (novo)
+- Adicionar testes unitários
 
 # 6. Passo a passo (comandos + código)
 
-## Passo 1: Código “ruim” inicial (Excalidraw: Slide 3)
+## Passo 1: Analisar o código "antes" (Excalidraw: Slide 3)
 
 **Intenção:** Ver o problema antes da refatoração.
 
-Abra o arquivo e confirme o trecho (ou cole se necessário):
+Abra e analise o arquivo:
 
-```bash
-code src/routes/predict.py
+```powershell
+code src/services/model_service.py
 ```
 
-Trecho em `src/routes/predict.py` (antes):
+**Problemas identificados no código atual:**
 
 ```python
-# ANTES
-@router.post("/predict")
-def predict_endpoint(payload: PredictRequest):
-    data = payload.model_dump()
-    if data["age"] < 18:
-        return {"error": "underage"}
-    if data["limit"] <= 0:
-        return {"error": "invalid_limit"}
-    # pré-processamento duplicado
-    data["score"] = data["limit"] * 0.01
-    result = predict_one(MODEL, data)
-    return {"prediction": result}
+def predict_one(data: dict) -> dict:
+    """40+ linhas fazendo muita coisa!"""
+    # 1. Extração de features
+    age = data.get("age", 0)
+    income = data.get("income", 0)
+    loan_amount = data.get("loan_amount", 0)
+    credit_history = data.get("credit_history", "poor")
+    
+    # 2. Cálculo de score com múltiplas regras
+    score = 0.5
+    if credit_history == "good":
+        score += 0.3
+    elif credit_history == "fair":
+        score += 0.1
+    
+    if age >= 25 and age <= 55:
+        score += 0.1
+    
+    if income > loan_amount * 3:
+        score += 0.2
+    elif income > loan_amount * 2:
+        score += 0.1
+    
+    # 3. Normalização
+    score = min(1.0, max(0.0, score))
+    
+    # 4. Decisão
+    prediction = "approved" if score >= 0.6 else "rejected"
+    
+    return {"prediction": prediction, "confidence": round(score, 3)}
 ```
 
-**CHECKPOINT:** Código funciona, mas tem duplicação e validação embutida no endpoint.
+**CHECKPOINT:** Função faz tudo: extração, cálculo, normalização e decisão.
 
 ---
 
-## Passo 2: Extract Function para validação (Excalidraw: Slide 3)
+## Passo 2: Extract Function - Scoring por histórico (Excalidraw: Slide 3)
 
-**Intenção:** Mover validação para função reutilizável.
+**Intenção:** Isolar regras de histórico de crédito.
 
-Crie o arquivo e adicione a função (diff lógico):
+Crie o novo módulo:
 
-```bash
-New-Item src/services/preprocessing.py -ItemType File
-code src/services/preprocessing.py
+```powershell
+New-Item src/services/scoring.py -ItemType File
+code src/services/scoring.py
 ```
 
-```diff
-+ def validate_payload(data: dict) -> str | None:
-+     if data["age"] < 18:
-+         return "underage"
-+     if data["limit"] <= 0:
-+         return "invalid_limit"
-+     return None
+Adicione as funções extraídas:
+
+```python
+"""Módulo de cálculo de score de crédito."""
+
+
+def score_by_credit_history(credit_history: str) -> float:
+    """
+    Calcula pontuação baseada no histórico de crédito.
+    
+    Args:
+        credit_history: Histórico do cliente ('good', 'fair', 'poor')
+        
+    Returns:
+        float: Pontos adicionados ao score (0.0 a 0.3)
+    """
+    if credit_history == "good":
+        return 0.3
+    elif credit_history == "fair":
+        return 0.1
+    return 0.0
+
+
+def score_by_age(age: int) -> float:
+    """
+    Calcula pontuação baseada na idade.
+    
+    Args:
+        age: Idade do cliente
+        
+    Returns:
+        float: Pontos adicionados ao score
+    """
+    if 25 <= age <= 55:
+        return 0.1
+    return 0.0
+
+
+def score_by_income_ratio(income: float, loan_amount: float) -> float:
+    """
+    Calcula pontuação baseada na relação renda/empréstimo.
+    
+    Args:
+        income: Renda mensal
+        loan_amount: Valor solicitado
+        
+    Returns:
+        float: Pontos adicionados ao score
+    """
+    if income > loan_amount * 3:
+        return 0.2
+    elif income > loan_amount * 2:
+        return 0.1
+    return 0.0
+
+
+def calculate_credit_score(data: dict) -> float:
+    """
+    Calcula score de crédito completo.
+    
+    Args:
+        data: Dicionário com features do cliente
+        
+    Returns:
+        float: Score final entre 0.0 e 1.0
+    """
+    base_score = 0.5
+    
+    score = base_score
+    score += score_by_credit_history(data.get("credit_history", "poor"))
+    score += score_by_age(data.get("age", 0))
+    score += score_by_income_ratio(
+        data.get("income", 0),
+        data.get("loan_amount", 0)
+    )
+    
+    # Normaliza entre 0 e 1
+    return min(1.0, max(0.0, score))
 ```
 
-Atualizar `predict.py`:
-
-```diff
-- if data["age"] < 18:
--     return {"error": "underage"}
-- if data["limit"] <= 0:
--     return {"error": "invalid_limit"}
-+ if error := validate_payload(data):
-+     return {"error": error}
-```
-
-**CHECKPOINT:** Endpoint continua funcionando, validação agora centralizada.
+**CHECKPOINT:** Funções pequenas, testáveis e com responsabilidade única.
 
 ---
 
-## Passo 3: Extract Function para pré-processamento (Excalidraw: Slide 4)
+## Passo 3: Refatorar model_service.py (Excalidraw: Slide 4)
 
-**Intenção:** Evitar duplicação de lógica de features.
+**Intenção:** Simplificar a função principal usando as novas funções.
 
-Adicionar em `preprocessing.py` (diff lógico):
+Abra e edite:
 
-```diff
-+ def build_features(data: dict) -> dict:
-+     data = data.copy()
-+     data["score"] = data["limit"] * 0.01
-+     return data
-```
-
-Atualizar `predict.py`:
-
-```diff
-- data["score"] = data["limit"] * 0.01
-- result = predict_one(MODEL, data)
-+ features = build_features(data)
-+ result = predict_one(MODEL, features)
-```
-
-**CHECKPOINT:** O endpoint usa funções reutilizáveis.
-
----
-
-## Passo 4: Reorganizar módulos (Excalidraw: Slide 4)
-
-**Intenção:** Separar HTTP de lógica de domínio.
-
-Diff lógico:
-
-```diff
-# src/routes/predict.py
-- from src.services.model_service import load_model, predict_one
-+ from src.services.model_service import load_model, predict_one
-+ from src.services.preprocessing import validate_payload, build_features
-```
-
-**CHECKPOINT:** Router apenas orquestra fluxo, sem lógica pesada.
-
----
-
-## Passo 5: Testes unitários para o novo módulo
-
-**Intenção:** Garantir que validação e features funcionam isoladamente.
-
-Crie `tests/test_preprocessing.py`:
-
-```bash
-New-Item tests/test_preprocessing.py -ItemType File
-code tests/test_preprocessing.py
+```powershell
+code src/services/model_service.py
 ```
 
 ```python
-from src.services.preprocessing import build_features, validate_payload
+"""Serviço de modelo de ML (simulado)."""
+
+import json
+import logging
+from pathlib import Path
+
+from src.services.scoring import calculate_credit_score
+
+logger = logging.getLogger("credit-api")
+
+# Caminho para logs de drift
+DRIFT_LOG_PATH = Path("logs/input_samples.jsonl")
+
+# Threshold de aprovação
+APPROVAL_THRESHOLD = 0.6
 
 
-def test_validate_payload_ok():
-    data = {"age": 30, "limit": 1000}
-    assert validate_payload(data) is None
+def load_model():
+    """
+    Carrega o modelo de ML.
+    
+    Nota: Por enquanto é um modelo simulado.
+    Em produção, carregaria um modelo real treinado.
+    
+    Returns:
+        dict: Configuração do modelo simulado
+    """
+    logger.info("Loading model...")
+    return {
+        "type": "simulated",
+        "version": "0.1.0",
+        "threshold": APPROVAL_THRESHOLD,
+    }
 
 
-def test_validate_payload_error():
-    data = {"age": 15, "limit": 1000}
-    assert validate_payload(data) == "underage"
+def predict_one(data: dict) -> dict:
+    """
+    Realiza predição para um único registro.
+    
+    Args:
+        data: Dicionário com features do cliente
+        
+    Returns:
+        dict: Resultado da predição
+    """
+    # Calcula score usando funções isoladas
+    score = calculate_credit_score(data)
+    
+    # Decisão baseada no threshold
+    prediction = "approved" if score >= APPROVAL_THRESHOLD else "rejected"
+    
+    return {
+        "prediction": prediction,
+        "confidence": round(score, 3),
+    }
 
 
-def test_build_features_adds_score():
-    data = {"age": 30, "limit": 1000}
-    features = build_features(data)
-    assert features["score"] == 10.0
+def log_input_sample(payload: dict) -> None:
+    """
+    Registra amostra de entrada para análise de drift.
+    
+    Args:
+        payload: Dados da requisição
+    """
+    try:
+        DRIFT_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with DRIFT_LOG_PATH.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(payload) + "\n")
+    except Exception as e:
+        logger.warning(f"Failed to log input sample: {e}")
+
+
+# Carrega modelo na inicialização do módulo
+MODEL = load_model()
 ```
 
-```bash
-uv run pytest tests/test_preprocessing.py -q
-```
-
-**CHECKPOINT:** Testes do módulo passam.
+**CHECKPOINT:** `predict_one` agora tem 5 linhas limpas!
 
 ---
 
-## Passo 6: Comparação final (Excalidraw: Slide 5)
+## Passo 4: Criar testes unitários para scoring (Excalidraw: Slide 4)
+
+**Intenção:** Garantir que cada regra funciona isoladamente.
+
+Crie os testes:
+
+```powershell
+New-Item tests/test_scoring.py -ItemType File
+code tests/test_scoring.py
+```
+
+```python
+"""Testes unitários para módulo de scoring."""
+
+from src.services.scoring import (
+    calculate_credit_score,
+    score_by_age,
+    score_by_credit_history,
+    score_by_income_ratio,
+)
+
+
+def test_score_by_credit_history_good():
+    """Histórico bom retorna 0.3."""
+    assert score_by_credit_history("good") == 0.3
+
+
+def test_score_by_credit_history_fair():
+    """Histórico regular retorna 0.1."""
+    assert score_by_credit_history("fair") == 0.1
+
+
+def test_score_by_credit_history_poor():
+    """Histórico ruim retorna 0.0."""
+    assert score_by_credit_history("poor") == 0.0
+
+
+def test_score_by_age_in_range():
+    """Idade na faixa ideal retorna 0.1."""
+    assert score_by_age(30) == 0.1
+    assert score_by_age(25) == 0.1
+    assert score_by_age(55) == 0.1
+
+
+def test_score_by_age_out_range():
+    """Idade fora da faixa retorna 0.0."""
+    assert score_by_age(20) == 0.0
+    assert score_by_age(60) == 0.0
+
+
+def test_score_by_income_ratio_high():
+    """Renda > 3x empréstimo retorna 0.2."""
+    assert score_by_income_ratio(10000, 3000) == 0.2
+
+
+def test_score_by_income_ratio_medium():
+    """Renda > 2x empréstimo retorna 0.1."""
+    assert score_by_income_ratio(5000, 2000) == 0.1
+
+
+def test_score_by_income_ratio_low():
+    """Renda baixa retorna 0.0."""
+    assert score_by_income_ratio(3000, 5000) == 0.0
+
+
+def test_calculate_credit_score_best_case():
+    """Melhor cenário deve dar score alto."""
+    data = {
+        "age": 35,
+        "income": 10000,
+        "loan_amount": 2000,
+        "credit_history": "good"
+    }
+    score = calculate_credit_score(data)
+    assert score == 1.0  # 0.5 + 0.3 + 0.1 + 0.2
+
+
+def test_calculate_credit_score_worst_case():
+    """Pior cenário deve dar score baixo."""
+    data = {
+        "age": 20,
+        "income": 1000,
+        "loan_amount": 5000,
+        "credit_history": "poor"
+    }
+    score = calculate_credit_score(data)
+    assert score == 0.5  # Apenas base score
+
+
+def test_calculate_credit_score_medium():
+    """Cenário médio."""
+    data = {
+        "age": 30,
+        "income": 5000,
+        "loan_amount": 2000,
+        "credit_history": "fair"
+    }
+    score = calculate_credit_score(data)
+    assert score == 0.8  # 0.5 + 0.1 + 0.1 + 0.1
+```
+
+**CHECKPOINT:** 13 testes unitários cobrindo cada regra isoladamente!
+
+---
+
+## Passo 5: Validar que tudo funciona
+
+**Intenção:** Garantir que a refatoração não quebrou nada.
+
+```powershell
+# Rodar todos os testes
+uv run pytest -v
+
+# Deve mostrar:
+# test_health.py::test_health_endpoint PASSED
+# test_metrics.py::test_metrics_endpoint PASSED
+# test_predict.py::test_predict_endpoint_with_valid_data PASSED
+# test_predict.py::test_predict_endpoint_approved_scenario PASSED
+# test_predict.py::test_predict_endpoint_rejected_scenario PASSED
+# test_predict.py::test_predict_endpoint_with_invalid_age PASSED
+# test_predict.py::test_predict_endpoint_with_invalid_credit_history PASSED
+# test_predict.py::test_predict_endpoint_with_missing_field PASSED
+# test_scoring.py::test_score_by_credit_history_good PASSED
+# test_scoring.py::... (mais 12 testes)
+```
+
+**CHECKPOINT:** 21 testes passando! Refatoração segura concluída.
+
+---
+
+## Passo 6: Comparação Antes vs Depois (Excalidraw: Slide 5)
 
 **Intenção:** Visualizar ganhos de qualidade.
 
-Antes:
-- Validação e features dentro do endpoint
-- Repetição em outros endpoints
+### ANTES:
+```python
+# model_service.py - 40+ linhas
+def predict_one(data: dict) -> dict:
+    age = data.get("age", 0)
+    income = data.get("income", 0)
+    loan_amount = data.get("loan_amount", 0)
+    credit_history = data.get("credit_history", "poor")
+    
+    score = 0.5
+    if credit_history == "good":
+        score += 0.3
+    # ... muitas linhas
+    return {"prediction": prediction, "confidence": score}
+```
 
-Depois:
-- Validação centralizada
-- Features reutilizáveis
-- Endpoints menores e mais legíveis
+- ❌ Lógica misturada
+- ❌ Difícil testar isoladamente
+- ❌ Mudanças arriscadas
 
-**CHECKPOINT:** Código mais modular e pronto para testes isolados.
+### DEPOIS:
+```python
+# model_service.py - 5 linhas
+def predict_one(data: dict) -> dict:
+    score = calculate_credit_score(data)
+    prediction = "approved" if score >= APPROVAL_THRESHOLD else "rejected"
+    return {"prediction": prediction, "confidence": round(score, 3)}
+
+# scoring.py - Funções pequenas e testáveis
+def score_by_credit_history(credit_history: str) -> float:
+    ...
+```
+
+- ✅ Responsabilidades separadas
+- ✅ Cada regra testada isoladamente
+- ✅ Fácil adicionar novas regras
+
+**CHECKPOINT:** Código mais limpo, testável e mantível.
 
 # 7. Testes rápidos e validação
 
-```bash
-# Rodar testes
-uv run pytest -q
+```powershell
+# Rodar testes unitários
+uv run pytest tests/test_scoring.py -v
+
+# Rodar todos os testes
+uv run pytest -v
+
+# Subir API e testar manualmente
+uv run uvicorn src.main:app --reload
 ```
 
-Exemplo de teste em `tests/test_preprocessing.py`:
+Teste manual via PowerShell:
 
-```python
-from src.services.preprocessing import validate_payload
+```powershell
+$body = @{
+    age = 35
+    income = 8000.0
+    loan_amount = 2000.0
+    credit_history = "good"
+} | ConvertTo-Json
 
-
-def test_validate_payload_ok():
-    data = {"age": 30, "limit": 1000}
-    assert validate_payload(data) is None
+Invoke-RestMethod -Uri http://localhost:8000/predict -Method Post -Body $body -ContentType "application/json"
 ```
 
 # 8. Observabilidade e boas práticas (mini-bloco)
 
-1. **Funções pequenas**: facilitam testes e manutenção. Trade-off: mais arquivos.
-2. **Separação de camadas**: endpoints só orquestram. Trade-off: exige disciplina.
-3. **Testes unitários rápidos**: garantem refatoração segura. Trade-off: escrita de testes.
+1. **Funções pequenas**: cada uma com <10 linhas. Trade-off: mais arquivos, mas mais testável.
+2. **Single Responsibility**: cada função faz uma coisa só. Trade-off: mais funções, mas menor acoplamento.
+3. **Testes unitários rápidos**: rodam em <1s. Trade-off: esforço inicial, mas segurança contínua.
+4. **Constantes explícitas**: `APPROVAL_THRESHOLD` no topo. Trade-off: mais variáveis, mas configurável.
 
 # 9. Troubleshooting (erros comuns)
 
 | Erro | Causa | Solução |
 |------|-------|---------|
-| Import falhou após mover função | Caminho errado | Revisar imports |
-| Endpoint retornou 500 | Função nova com bug | Rodar testes unitários |
-| Feature engineering duplicado | Função não usada | Substituir uso no endpoint |
+| `ModuleNotFoundError: No module named 'src.services.scoring'` | Import errado | Verificar caminho e __init__.py |
+| Testes antigos falharam | Comportamento mudou | Revisar se lógica está igual |
+| Score diferente do esperado | Regras alteradas | Ajustar testes ou lógica |
+| Import circular | Módulos se importando | Reorganizar dependências |
 
 # 10. Exercícios (básico e avançado)
 
-**Básico 1:** Criar teste unitário para `build_features`.
-- Concluído com sucesso: teste valida saída esperada.
+**Básico 1:** Adicionar nova regra: desconto de 0.05 se `age > 60`.
+- Criar `score_by_senior` em `scoring.py`
+- Adicionar teste unitário
+- Integrar em `calculate_credit_score`
 
-**Básico 2:** Refatorar outro endpoint para usar `validate_payload`.
-- Concluído com sucesso: duplicação removida.
+**Básico 2:** Extrair validações de negócio para `business_rules.py`.
+- Criar função `validate_loan_eligibility`
+- Validar se `income >= loan_amount * 0.3` (mínimo 30%)
+- Adicionar testes
 
-**Avançado:** Criar módulo `services/validation.py` com regras mais completas e testes.
-- Concluído com sucesso: validação centralizada em módulo próprio.
+**Avançado:** Criar sistema de pesos configurável.
+- Substituir valores fixos (0.3, 0.2, etc) por um dict de configuração
+- Permitir ajustar pesos sem mudar código
+- Adicionar testes parametrizados
 
 # 11. Resultados e Lições
 
 **Resultados (como medir):**
-- Redução de linhas no endpoint
-- Número de funções reutilizáveis criadas
-- Testes unitários adicionados
+- Linhas por função: de 40 para 5 em `predict_one`
+- Cobertura de testes: de 0% para ~95% nas regras de score
+- Número de funções testáveis: de 1 para 5
+- Tempo de adição de nova regra: de horas para minutos
 
 **Lições:**
-- Refatoração reduz duplicação
-- Funções pequenas facilitam evolução
-- Separação de responsabilidades melhora confiabilidade
+- Refatoração não muda comportamento, melhora design
+- Funções pequenas são mais fáceis de entender e testar
+- Separação de responsabilidades facilita evolução
+- Testes unitários dão confiança para mudanças
 
 # 12. Encerramento e gancho para a próxima aula (script)
 
-Nesta aula você realizou uma refatoração prática, transformando um endpoint pesado em funções pequenas e reutilizáveis, mantendo a API estável.
+Nesta aula você realizou uma refatoração prática real, transformando uma função complexa de 40 linhas em módulos limpos e testáveis, aumentando a cobertura de testes de forma significativa.
 
-Na próxima parte, vamos aprender a **reorganizar um projeto de Data Science** com uma estrutura profissional, como o Cookiecutter Data Science, e discutir benefícios de colaboração e produção.
+Na próxima parte, vamos aprender a **reorganizar o projeto completo** com uma estrutura profissional baseada no Cookiecutter Data Science, integrando nossa API refatorada em uma estrutura escalável para produção.

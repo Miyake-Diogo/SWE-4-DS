@@ -272,6 +272,12 @@ curl -X POST http://localhost:8000/predict \
   -H "Content-Type: application/json" \
   -d "{\"age\": 30, \"limit\": 2000, \"history\": \"good\"}"
 
+# Windows
+Invoke-WebRequest -Uri "http://localhost:8000/predict" -Method POST -Headers @{"Content-Type"="application/json"} -Body '{"age": 30, "income": 5000, "loan_amount": 2000, "credit_history": "good"}' | Select-Object -Expand Content
+
+# Rejected
+Invoke-WebRequest -Uri "http://localhost:8000/predict" -Method POST -Headers @{"Content-Type"="application/json"} -Body '{"age": 70, "income": 3000, "loan_amount": 10000, "credit_history": "poor"}' | Select-Object -Expand Content
+
 # Testar metrics
 curl http://localhost:8000/metrics
 ```
